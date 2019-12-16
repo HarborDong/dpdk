@@ -248,6 +248,9 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 	struct rte_flow_error error;
 	int ret;
 
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	/* Prepare internal flow rules. */
 	ret = mlx4_flow_sync(priv, &error);
 	if (ret) {
@@ -763,6 +766,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	};
 	unsigned int vf;
 	int i;
+	char ifname[IF_NAMESIZE];
 
 	(void)pci_drv;
 	err = mlx4_init_once();
@@ -1002,17 +1006,15 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
 		/* Register MAC address. */
 		priv->mac[0] = mac;
-#ifndef NDEBUG
-		{
-			char ifname[IF_NAMESIZE];
 
-			if (mlx4_get_ifname(priv, &ifname) == 0)
-				DEBUG("port %u ifname is \"%s\"",
-				      priv->port, ifname);
-			else
-				DEBUG("port %u ifname is unknown", priv->port);
+		if (mlx4_get_ifname(priv, &ifname) == 0) {
+			DEBUG("port %u ifname is \"%s\"",
+			      priv->port, ifname);
+			priv->if_index = if_nametoindex(ifname);
+		} else {
+			DEBUG("port %u ifname is unknown", priv->port);
 		}
-#endif
+
 		/* Get actual MTU if possible. */
 		mlx4_mtu_get(priv, &priv->mtu);
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);

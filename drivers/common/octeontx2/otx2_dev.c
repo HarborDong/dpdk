@@ -791,9 +791,8 @@ otx2_pf_vf_flr_irq(void *param)
 			if (!(intr & (1ULL << vf)))
 				continue;
 
-			vf = 64 * i + vf;
 			otx2_base_dbg("FLR: i :%d intr: 0x%" PRIx64 ", vf-%d",
-				      i, intr, vf);
+				      i, intr, (64 * i + vf));
 			/* Clear interrupt */
 			otx2_write64(BIT_ULL(vf), bar2 + RVU_PF_VFFLR_INTX(i));
 			/* Disable the interrupt */
@@ -886,6 +885,7 @@ otx2_update_vf_hwcap(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 	case PCI_DEVID_OCTEONTX2_RVU_CPT_VF:
 	case PCI_DEVID_OCTEONTX2_RVU_AF_VF:
 	case PCI_DEVID_OCTEONTX2_RVU_VF:
+	case PCI_DEVID_OCTEONTX2_RVU_SDP_VF:
 		dev->hwcap |= OTX2_HWCAP_F_VF;
 		break;
 	}

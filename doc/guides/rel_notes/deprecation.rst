@@ -4,9 +4,9 @@
 ABI and API Deprecation
 =======================
 
-See the :doc:`guidelines document for details of the ABI policy </contributing/versioning>`.
-API and ABI deprecation notices are to be posted here.
-
+See the guidelines document for details of the :doc:`ABI policy
+<../contributing/abi_policy>`. API and ABI deprecation notices are to be posted
+here.
 
 Deprecation Notices
 -------------------
@@ -34,16 +34,9 @@ Deprecation Notices
 
     + ``rte_eal_devargs_type_count``
 
-* vfio: removal of ``rte_vfio_dma_map`` and ``rte_vfio_dma_unmap`` APIs which
-  have been replaced with ``rte_dev_dma_map`` and ``rte_dev_dma_unmap``
-  functions.  The due date for the removal targets DPDK 20.02.
-
-* pci: Several exposed functions are misnamed.
-  The following functions are deprecated starting from v17.11 and are replaced:
-
-  - ``eal_parse_pci_BDF`` replaced by ``rte_pci_addr_parse``
-  - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
-  - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
+* eal: The ``rte_logs`` struct and global symbol will be made private to
+  remove it from the externally visible ABI and allow it to be updated in the
+  future.
 
 * dpaa2: removal of ``rte_dpaa2_memsegs`` structure which has been replaced
   by a pa-va search library. This structure was earlier being used for holding
@@ -58,6 +51,21 @@ Deprecation Notices
   PMDs that implement the latter.
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
+
+* ethdev: Update API functions returning ``void`` to return ``int`` with
+  negative errno values to indicate various error conditions (e.g.
+  invalid port ID, unsupported operation, failed operation):
+
+  - ``rte_eth_dev_stop``
+  - ``rte_eth_dev_close``
+
+* ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
+  This will allow application to enable or disable PMDs from updating
+  ``rte_mbuf::hash::fdir``.
+  This scheme will allow PMDs to avoid writes to ``rte_mbuf`` fields on Rx and
+  thereby improve Rx performance if application wishes do so.
+  In 19.11 PMDs will still update the field even when the offload is not
+  enabled.
 
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,

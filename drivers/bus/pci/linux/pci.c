@@ -9,7 +9,6 @@
 #include <rte_bus.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
-#include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
@@ -498,12 +497,11 @@ error:
 }
 
 #if defined(RTE_ARCH_X86)
-static bool
-pci_one_device_iommu_support_va(const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(const struct rte_pci_device *dev)
 {
 #define VTD_CAP_MGAW_SHIFT	16
 #define VTD_CAP_MGAW_MASK	(0x3fULL << VTD_CAP_MGAW_SHIFT)
-#define X86_VA_WIDTH 47 /* From Documentation/x86/x86_64/mm.txt */
 	const struct rte_pci_addr *addr = &dev->addr;
 	char filename[PATH_MAX];
 	FILE *fp;
@@ -513,18 +511,19 @@ pci_one_device_iommu_support_va(const struct rte_pci_device *dev)
 		 "%s/" PCI_PRI_FMT "/iommu/intel-iommu/cap",
 		 rte_pci_get_sysfs_path(), addr->domain, addr->bus, addr->devid,
 		 addr->function);
-	if (access(filename, F_OK) == -1) {
-		/* We don't have an Intel IOMMU, assume VA supported*/
-		return true;
-	}
 
-	/* We have an intel IOMMU */
 	fp = fopen(filename, "r");
 	if (fp == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): can't open %s\n", __func__, filename);
+		/* We don't have an Intel IOMMU, assume VA supported */
+		if (errno == ENOENT)
+			return true;
+
+		RTE_LOG(ERR, EAL, "%s(): can't open %s: %s\n",
+			__func__, filename, strerror(errno));
 		return false;
 	}
 
+	/* We have an Intel IOMMU */
 	if (fscanf(fp, "%" PRIx64, &vtd_cap_reg) != 1) {
 		RTE_LOG(ERR, EAL, "%s(): can't read %s\n", __func__, filename);
 		fclose(fp);
@@ -547,14 +546,14 @@ pci_one_device_iommu_support_va(const struct rte_pci_device *dev)
 	return true;
 }
 #elif defined(RTE_ARCH_PPC_64)
-static bool
-pci_one_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 {
 	return false;
 }
 #else
-static bool
-pci_one_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
+bool
+pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 {
 	return true;
 }
@@ -565,7 +564,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		     const struct rte_pci_device *pdev)
 {
 	enum rte_iova_mode iova_mode = RTE_IOVA_DC;
-	static int iommu_no_va = -1;
 
 	switch (pdev->kdrv) {
 	case RTE_KDRV_VFIO: {
@@ -595,18 +593,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		if ((pdrv->drv_flags & RTE_PCI_DRV_NEED_IOVA_AS_VA) != 0)
 			iova_mode = RTE_IOVA_VA;
 		break;
-	}
-
-	if (iova_mode != RTE_IOVA_PA) {
-		/*
-		 * We can check this only once, because the IOMMU hardware is
-		 * the same for all of them.
-		 */
-		if (iommu_no_va == -1)
-			iommu_no_va = pci_one_device_iommu_support_va(pdev)
-					? 0 : 1;
-		if (iommu_no_va != 0)
-			iova_mode = RTE_IOVA_PA;
 	}
 	return iova_mode;
 }
@@ -670,6 +656,12 @@ pci_ioport_map(struct rte_pci_device *dev, int bar __rte_unused,
 	char pci_id[16];
 	int found = 0;
 	size_t linesz;
+
+	if (rte_eal_iopl_init() != 0) {
+		RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+			__func__, dev->name);
+		return -1;
+	}
 
 	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
 		 dev->addr.domain, dev->addr.bus,

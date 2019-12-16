@@ -19,12 +19,32 @@
 #define otx2_dev_is_lbk(dev)	((dev->hwcap & OTX2_HWCAP_F_VF) && \
 				 (dev->tx_chan_base < 0x700))
 #define otx2_dev_revid(dev)	(dev->hwcap & 0xFF)
+#define otx2_dev_is_sdp(dev)	(dev->sdp_link)
+
+#define otx2_dev_is_vf_or_sdp(dev)				\
+	(otx2_dev_is_vf(dev) || otx2_dev_is_sdp(dev))
 
 #define otx2_dev_is_A0(dev)					\
 	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
 	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0))
 #define otx2_dev_is_Ax(dev)					\
 	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0))
+
+#define otx2_dev_is_95xx_A0(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x1))
+#define otx2_dev_is_95xx_Ax(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x1))
+
+#define otx2_dev_is_96xx_A0(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
+#define otx2_dev_is_96xx_Ax(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
 
 struct otx2_dev;
 
